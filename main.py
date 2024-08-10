@@ -1,10 +1,11 @@
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+import re
 import os
 from dotenv import load_dotenv
 load_dotenv()
-
+import json
 def login_to_sso(username, password):
     session = requests.Session()
     
@@ -25,22 +26,39 @@ def login_to_sso(username, password):
     return session
 
 def is_logged_in(session):
-    test_url = 'https://mybk.hcmut.edu.vn/app/he-thong-quan-ly/sinh-vien/thong-tin-tuyen-sinh'
+    test_url = 'https://mybk.hcmut.edu.vn/app/he-thong-quan-ly/sinh-vien/ket-qua-hoc-tap'
     response = session.get(test_url)
     return 'Đăng nhập' not in response.text  # Check if login text is not in the response
+
+def get_jwt_token(session):
+    url = 'https://mybk.hcmut.edu.vn/app/he-thong-quan-ly/sinh-vien/ket-qua-hoc-tap'
+    response = session.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    token_input = soup.find('input', {'id': 'hid_Token'})
+    return token_input['value']
+
 
 # Usage
 username = os.getenv('ACCOUNT')
 password = os.getenv('PASSWORD')
 
 session = login_to_sso(username, password)
+jwt_token = get_jwt_token(session)
+student_info_url = 'https://mybk.hcmut.edu.vn/api/v1/student/get-student-info'
+headers = {
+    'Authorization': jwt_token
+}
+response = session.get(student_info_url, headers=headers)
+student_info = response.json()
+student_info = student_info['data']['id']
+print(student_info)
 
-if session and is_logged_in(session):
-    print("Successfully logged in!")
-    protected_url = 'https://mybk.hcmut.edu.vn/app/he-thong-quan-ly/sinh-vien/thong-tin-tuyen-sinh'
-    response = session.get(protected_url)
-
-
-
-else:
-    print("Login failed or unable to access protected content")
+grade_url = 'https://mybk.hcmut.edu.vn/api/v1/student/subject-grade'
+params = {
+    'studentId': int(student_info),
+    'semesterYear': -1,
+    'null': None
+}
+response = session.get(grade_url, params=params, headers=headers)
+data = json.loads(response.text)
+print(data)
