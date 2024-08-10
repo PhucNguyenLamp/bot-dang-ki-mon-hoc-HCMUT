@@ -1,1 +1,8 @@
 .env
+test.py
+tinker.py
+__pycache__/
+build/
+dist/
+tempCodeRunnerFile.py
+tinker.spec

@@ -3,8 +3,6 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import re
 import os
-from dotenv import load_dotenv
-load_dotenv()
 import json
 def login_to_sso(username, password):
     session = requests.Session()
@@ -34,26 +32,24 @@ def get_jwt_token(session):
 
 
 # Usage
-username = os.getenv('ACCOUNT')
-password = os.getenv('PASSWORD')
+def get_student_info(session, jwt_token):
+    student_info_url = 'https://mybk.hcmut.edu.vn/api/v1/student/get-student-info'
+    headers = {
+        'Authorization': jwt_token
+    }
+    response = session.get(student_info_url, headers=headers)
+    student_info = response.json()
+    student_info = student_info['data']['id']
+    print(student_info)
 
-session = login_to_sso(username, password)
-jwt_token = get_jwt_token(session)
-student_info_url = 'https://mybk.hcmut.edu.vn/api/v1/student/get-student-info'
-headers = {
-    'Authorization': jwt_token
-}
-response = session.get(student_info_url, headers=headers)
-student_info = response.json()
-student_info = student_info['data']['id']
-print(student_info)
+    grade_url = 'https://mybk.hcmut.edu.vn/api/v1/student/subject-grade'
+    params = {
+        'studentId': int(student_info),
+        'semesterYear': -1,
+        'null': None
+    }
+    response = session.get(grade_url, params=params, headers=headers)
+    data = response.text
+    return data
 
-grade_url = 'https://mybk.hcmut.edu.vn/api/v1/student/subject-grade'
-params = {
-    'studentId': int(student_info),
-    'semesterYear': -1,
-    'null': None
-}
-response = session.get(grade_url, params=params, headers=headers)
-data = json.loads(response.text)
-print(data)
+
