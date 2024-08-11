@@ -32,28 +32,32 @@ def get_jwt_token(session):
     token_input = soup.find('input', {'id': 'hid_Token'})
     return token_input['value']
 
+def get_student_info(session, jwt_token):
+    student_info_url = 'https://mybk.hcmut.edu.vn/api/v1/student/get-student-info'
+    headers = {
+        'Authorization': jwt_token
+    }
+    response = session.get(student_info_url, headers=headers)
+    student_info = response.json()
+    student_info = student_info['data']['id']
+    print(student_info)
 
-# Usage
-username = os.getenv('ACCOUNT')
-password = os.getenv('PASSWORD')
+    grade_url = 'https://mybk.hcmut.edu.vn/api/v1/student/subject-grade'
+    params = {
+        'studentId': int(student_info),
+        'semesterYear': -1,
+        'null': None
+    }
+    response = session.get(grade_url, params=params, headers=headers)
+    data = response.text
+    return data
 
-session = login_to_sso(username, password)
-jwt_token = get_jwt_token(session)
-student_info_url = 'https://mybk.hcmut.edu.vn/api/v1/student/get-student-info'
-headers = {
-    'Authorization': jwt_token
-}
-response = session.get(student_info_url, headers=headers)
-student_info = response.json()
-student_info = student_info['data']['id']
-print(student_info)
 
-grade_url = 'https://mybk.hcmut.edu.vn/api/v1/student/subject-grade'
-params = {
-    'studentId': int(student_info),
-    'semesterYear': -1,
-    'null': None
-}
-response = session.get(grade_url, params=params, headers=headers)
-data = json.loads(response.text)
-print(data)
+if __name__ == '__main__':
+    username = os.getenv('ACCOUNT')
+    password = os.getenv('PASSWORD')
+
+    session = login_to_sso(username, password)
+    jwt_token = get_jwt_token(session)
+    info = get_student_info(session, jwt_token)
+    print(info)
