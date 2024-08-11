@@ -1,9 +1,9 @@
 .env
 test.py
 tinker.py
-__pycache__/
-build/
-dist/
 tempCodeRunnerFile.py
 nocli.py
 tinker.spec
+__pycache__/
+build/
+dist/
