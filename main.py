@@ -1,19 +1,19 @@
-import requests
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin
+import json
 import re
 import os
+from urllib.parse import urljoin
+import requests
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 load_dotenv()
-import json
+
 def login_to_sso(username, password):
     session = requests.Session()
     
     sso_base_url = 'https://sso.hcmut.edu.vn'
     mybk_base_url = 'https://mybk.hcmut.edu.vn'
     login_url = f'{sso_base_url}/cas/login'
-    service_url = f'{mybk_base_url}/app/login/cas'
-    
+    service_url = f'{mybk_base_url}/dkmh/'
     # đúng link
     response = session.get(f'{login_url}?service={service_url}')
     # đúng form data và action
@@ -21,43 +21,65 @@ def login_to_sso(username, password):
     form = soup.find('form', id='fm1')
     form_data = {input.get('name'): input.get('value') for input in form.find_all('input') if input.get('name')}
     form_data.update({'username': username, 'password': password})
-    session.post(urljoin(sso_base_url, form['action']), data=form_data, allow_redirects=True)
+    response = session.post(urljoin(sso_base_url, form['action']), data=form_data, allow_redirects=True)
+    response = session.get(f'{mybk_base_url}/dkmh/home.action')
+    response = session.get(f'{mybk_base_url}/dkmh/dangKyMonHocForm.action')
+    
+    data = session.get(f'{service_url}/ketQuaDangKyView.action', data={'hocKyId': '574'})
+    session.post(f'{service_url}/getDanhSachDotDK.action',data={'hocKyId': '574'})
+    session.post(f'{service_url}/getLichDangKy.action', data={'dotDKId':'656','dotDKHocVienId':'656'})
+    session.post(f'{service_url}/getDanhSachMonHocDangKy.action', data={'dotDKId':'656'})
+    session.post(f'{service_url}/getKetQuaDangKy.action')
 
     return session
 
-def get_jwt_token(session):
-    url = 'https://mybk.hcmut.edu.vn/app/he-thong-quan-ly/sinh-vien/ket-qua-hoc-tap'
-    response = session.get(url)
+def get_subject_code(session, subject_id):
+    payload = {
+        'msmh': subject_id
+    }
+    response = session.post('https://mybk.hcmut.edu.vn/dkmh/searchMonHocDangKy.action', data=payload)
     soup = BeautifulSoup(response.text, 'html.parser')
-    token_input = soup.find('input', {'id': 'hid_Token'})
-    return token_input['value']
+    tr_element = soup.find('tr', id=lambda x: x and x.startswith('monHoc'))
+    if tr_element is None:
+        return None
+    subject_code = tr_element['id'].replace('monHoc', '')
+    return subject_code
 
-def get_student_info(session, jwt_token):
-    student_info_url = 'https://mybk.hcmut.edu.vn/api/v1/student/get-student-info'
-    headers = {
-        'Authorization': jwt_token
+def get_class_id(session, subject_code):
+    payload = {
+        'monHocId': subject_code
     }
-    response = session.get(student_info_url, headers=headers)
-    student_info = response.json()
-    student_info = student_info['data']['id']
-    print(student_info)
+    response = session.post('https://mybk.hcmut.edu.vn/dkmh/getThongTinNhomLopMonHoc.action', data=payload)
+    with open('response.html', 'w') as f:
+        f.write(response.text)
 
-    grade_url = 'https://mybk.hcmut.edu.vn/api/v1/student/subject-grade'
-    params = {
-        'studentId': int(student_info),
-        'semesterYear': -1,
-        'null': None
+    soup = BeautifulSoup(response.text, 'html.parser')
+    n_group = soup.find('td', class_='item_list', string='N--- ')
+    tr = n_group.find_parent('tr')
+    button = tr.find('button', onclick=lambda x: x and 'dangKyNhomLopMonHoc' in x)
+    onclick_value = button['onclick']
+    start_index = onclick_value.index('this,') + 5
+    end_index = onclick_value.index(',', start_index)
+    class_id = onclick_value[start_index:end_index].strip()
+    return class_id
+
+
+def register_class(session, class_id):
+    url = 'https://mybk.hcmut.edu.vn/dkmh/dangKy.action'
+    payload = {
+        'NLMHId': class_id
     }
-    response = session.get(grade_url, params=params, headers=headers)
-    data = response.text
-    return data
-
+    data = session.post(url, data=payload)
+    print(data.text)
 
 if __name__ == '__main__':
     username = os.getenv('ACCOUNT')
     password = os.getenv('PASSWORD')
 
     session = login_to_sso(username, password)
-    jwt_token = get_jwt_token(session)
-    info = get_student_info(session, jwt_token)
-    print(info)
+
+    subject_code = get_subject_code(session, 'AS1003') 
+    print(subject_code)
+    class_id = get_class_id(session, subject_code)
+    print(class_id)
+    register_class(session, class_id)

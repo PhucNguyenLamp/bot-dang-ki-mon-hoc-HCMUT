@@ -6,3 +6,5 @@ tinker.spec
 __pycache__/
 build/
 dist/
+json.js
+response.html
