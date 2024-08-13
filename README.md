@@ -2,6 +2,6 @@
 Nên mình làm bot đăng kí môn  
 Mục đích nghiên cứu, xin đừng kiện  
 - [x] Đăng nhập được
-- [x] Lấy được bảng điểm
 - [x] Đăng kí môn
+- [] Giao dien 
 
