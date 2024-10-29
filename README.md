@@ -5,3 +5,4 @@ Mục đích nghiên cứu, xin đừng kiện
 - [x] Đăng kí môn
 - [ ] Giao dien 
 
+![image](https://github.com/user-attachments/assets/e776a0bc-be4c-4dd7-b492-7499b1b16559)
